@@ -16,7 +16,9 @@ struct TodoRowView: View {
         HStack(alignment: .top, spacing: 12) {
             // 完成状态按钮
             Button {
-                onToggleCompletion?()
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                    onToggleCompletion?()
+                }
             } label: {
                 Image(systemName: todo.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
@@ -30,6 +32,7 @@ struct TodoRowView: View {
                     .font(.body)
                     .strikethrough(todo.isCompleted)
                     .foregroundStyle(todo.isCompleted ? .secondary : .primary)
+                    .animation(.easeInOut(duration: 0.2), value: todo.isCompleted)
 
                 // 备注
                 if !todo.notes.isEmpty {
@@ -43,21 +46,30 @@ struct TodoRowView: View {
                 HStack(spacing: 8) {
                     // 分类
                     if let category = todo.category {
-                        Label(category.name, systemImage: category.iconName)
-                            .font(.caption)
-                            .foregroundStyle(Color(hex: category.colorHex))
+                        HStack(spacing: 4) {
+                            Image(systemName: category.iconName)
+                            Text(category.name)
+                        }
+                        .font(.caption)
+                        .foregroundStyle(Color(hex: category.colorHex))
                     }
 
                     // 优先级
-                    Label(todo.priority.displayName, systemImage: "flag.fill")
-                        .font(.caption)
-                        .foregroundStyle(Color(todo.priority.color))
+                    HStack(spacing: 4) {
+                        Image(systemName: "flag.fill")
+                        Text(todo.priority.displayName)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(Color(todo.priority.color))
 
                     // 截止日期
                     if let dueDate = todo.dueDate {
-                        Label(formatDate(dueDate), systemImage: "calendar")
-                            .font(.caption)
-                            .foregroundStyle(dueDateColor(dueDate))
+                        HStack(spacing: 4) {
+                            Image(systemName: "calendar")
+                            Text(formatDate(dueDate))
+                        }
+                        .font(.caption)
+                        .foregroundStyle(dueDateColor(dueDate))
                     }
                 }
             }
