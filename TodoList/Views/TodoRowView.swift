@@ -60,7 +60,7 @@ struct TodoRowView: View {
                         Text(todo.priority.displayName)
                     }
                     .font(.caption)
-                    .foregroundStyle(Color(todo.priority.color))
+                    .foregroundStyle(todo.priority.color)
 
                     // 截止日期
                     if let dueDate = todo.dueDate {

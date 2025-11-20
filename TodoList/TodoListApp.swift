@@ -31,8 +31,13 @@ struct TodoListApp: App {
         WindowGroup {
             ContentView()
                 .task {
-                    // 请求通知权限
                     await notificationManager.requestAuthorization()
+                    await notificationManager.syncBadgeCount()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                    Task {
+                        await notificationManager.syncBadgeCount()
+                    }
                 }
         }
         .modelContainer(modelContainer)

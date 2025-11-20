@@ -43,6 +43,7 @@ struct PreviewContainer {
             notes: "需要包含本季度的销售数据",
             priority: .high,
             dueDate: Calendar.current.date(byAdding: .day, value: 2, to: Date()),
+            reminderMinutes: 60,
             category: workCategory
         )
 
@@ -59,6 +60,7 @@ struct PreviewContainer {
             notes: "跑步30分钟",
             priority: .low,
             dueDate: Date(),
+            reminderMinutes: 30,
             category: personalCategory
         )
 

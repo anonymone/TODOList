@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import SwiftUI
 
 @Model
 final class TodoItem {
@@ -16,6 +17,7 @@ final class TodoItem {
     var isCompleted: Bool
     var priority: Priority
     var dueDate: Date?
+    var reminderMinutes: Int?  // 提前提醒时间（分钟）
     var createdAt: Date
     var completedAt: Date?
 
@@ -28,6 +30,7 @@ final class TodoItem {
         isCompleted: Bool = false,
         priority: Priority = .medium,
         dueDate: Date? = nil,
+        reminderMinutes: Int? = nil,
         category: Category? = nil
     ) {
         self.id = UUID()
@@ -36,6 +39,7 @@ final class TodoItem {
         self.isCompleted = isCompleted
         self.priority = priority
         self.dueDate = dueDate
+        self.reminderMinutes = reminderMinutes
         self.createdAt = Date()
         self.category = category
     }
@@ -68,11 +72,11 @@ enum Priority: Int, Codable, CaseIterable {
         }
     }
 
-    var color: String {
+    var color: Color {
         switch self {
-        case .low: return "green"
-        case .medium: return "orange"
-        case .high: return "red"
+        case .low: return .green
+        case .medium: return .orange
+        case .high: return .red
         }
     }
 }

@@ -23,6 +23,40 @@ struct AddTodoView: View {
     @State private var selectedCategory: Category?
     @State private var hasDueDate = false
     @State private var dueDate = Date()
+    @State private var hasReminder = false
+    @State private var reminderOption: ReminderOption = .minutes30
+
+    // 键盘焦点管理
+    @FocusState private var focusedField: Field?
+
+    enum Field {
+        case title
+        case notes
+    }
+
+    enum ReminderOption: Int, CaseIterable {
+        case minutes5 = 5
+        case minutes10 = 10
+        case minutes15 = 15
+        case minutes30 = 30
+        case hour1 = 60
+        case hours2 = 120
+        case hours3 = 180
+        case day1 = 1440
+
+        var displayName: String {
+            switch self {
+            case .minutes5: return "5 分钟前"
+            case .minutes10: return "10 分钟前"
+            case .minutes15: return "15 分钟前"
+            case .minutes30: return "30 分钟前"
+            case .hour1: return "1 小时前"
+            case .hours2: return "2 小时前"
+            case .hours3: return "3 小时前"
+            case .day1: return "1 天前"
+            }
+        }
+    }
 
     var isEditing: Bool {
         todoToEdit != nil
@@ -35,6 +69,7 @@ struct AddTodoView: View {
                 Section {
                     TextField("任务标题", text: $title)
                         .font(.body)
+                        .focused($focusedField, equals: .title)
                 }
 
                 // 备注
@@ -42,6 +77,7 @@ struct AddTodoView: View {
                     TextEditor(text: $notes)
                         .frame(minHeight: 80)
                         .font(.body)
+                        .focused($focusedField, equals: .notes)
                 }
 
                 // 优先级
@@ -52,6 +88,9 @@ struct AddTodoView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .onChange(of: selectedPriority) { _, _ in
+                        focusedField = nil  // 收起键盘
+                    }
                 }
 
                 // 分类
@@ -63,11 +102,17 @@ struct AddTodoView: View {
                                 .tag(category as Category?)
                         }
                     }
+                    .onChange(of: selectedCategory) { _, _ in
+                        focusedField = nil  // 收起键盘
+                    }
                 }
 
                 // 截止日期
                 Section {
                     Toggle("设置截止日期", isOn: $hasDueDate)
+                        .onChange(of: hasDueDate) { _, _ in
+                            focusedField = nil  // 收起键盘
+                        }
 
                     if hasDueDate {
                         DatePicker(
@@ -76,9 +121,42 @@ struct AddTodoView: View {
                             in: Date()...,
                             displayedComponents: [.date, .hourAndMinute]
                         )
+                        .onChange(of: dueDate) { _, _ in
+                            focusedField = nil  // 收起键盘
+                        }
+                    }
+                }
+
+                // 提前提醒
+                if hasDueDate {
+                    Section {
+                        Toggle("设置提前提醒", isOn: $hasReminder)
+                            .onChange(of: hasReminder) { _, _ in
+                                focusedField = nil  // 收起键盘
+                            }
+
+                        if hasReminder {
+                            Picker("提醒时间", selection: $reminderOption) {
+                                ForEach(ReminderOption.allCases, id: \.self) { option in
+                                    Text(option.displayName).tag(option)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .onChange(of: reminderOption) { _, _ in
+                                focusedField = nil  // 收起键盘
+                            }
+                        }
+                    } header: {
+                        Text("提醒设置")
+                    } footer: {
+                        if hasReminder {
+                            Text("将在任务到期前 \(reminderOption.displayName) 发送通知提醒")
+                                .font(.caption)
+                        }
                     }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(isEditing ? "编辑任务" : "新建任务")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -99,6 +177,12 @@ struct AddTodoView: View {
         .onAppear {
             loadTodoData()
         }
+        .task {
+            // 只在查看已有任务详情时，清除该任务相关的通知和badge
+            if isEditing, let todo = todoToEdit {
+                await NotificationManager.shared.clearBadgeForTodo(todo.id.uuidString)
+            }
+        }
     }
 
     private func loadTodoData() {
@@ -112,6 +196,13 @@ struct AddTodoView: View {
             hasDueDate = true
             self.dueDate = dueDate
         }
+        if let reminderMinutes = todo.reminderMinutes {
+            hasReminder = true
+            // 找到匹配的 ReminderOption
+            if let option = ReminderOption.allCases.first(where: { $0.rawValue == reminderMinutes }) {
+                reminderOption = option
+            }
+        }
     }
 
     private func saveTask() {
@@ -124,9 +215,16 @@ struct AddTodoView: View {
             todo.priority = selectedPriority
             todo.category = selectedCategory
             todo.dueDate = hasDueDate ? dueDate : nil
+            todo.reminderMinutes = (hasDueDate && hasReminder) ? reminderOption.rawValue : nil
 
             // 更新通知
-            notificationManager.updateNotification(for: todo)
+            notificationManager.cancelNotification(for: todo)
+            if hasDueDate && !todo.isCompleted {
+                notificationManager.scheduleNotification(for: todo)
+                if hasReminder {
+                    notificationManager.scheduleAdvanceNotification(for: todo, minutesBefore: reminderOption.rawValue)
+                }
+            }
         } else {
             // 新建模式：创建新任务
             let newTodo = TodoItem(
@@ -134,6 +232,7 @@ struct AddTodoView: View {
                 notes: notes,
                 priority: selectedPriority,
                 dueDate: hasDueDate ? dueDate : nil,
+                reminderMinutes: (hasDueDate && hasReminder) ? reminderOption.rawValue : nil,
                 category: selectedCategory
             )
             modelContext.insert(newTodo)
@@ -141,7 +240,9 @@ struct AddTodoView: View {
             // 安排通知
             if hasDueDate {
                 notificationManager.scheduleNotification(for: newTodo)
-                notificationManager.scheduleAdvanceNotification(for: newTodo, minutesBefore: 60)
+                if hasReminder {
+                    notificationManager.scheduleAdvanceNotification(for: newTodo, minutesBefore: reminderOption.rawValue)
+                }
             }
         }
 
