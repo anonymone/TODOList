@@ -1,5 +1,11 @@
 # iOS TODO List App
 
+<div align="center">
+  <img src="TodoList/Assets.xcassets/AppIcon.appiconset/app-icon-1024%201.png" alt="TODO Cat App Icon" width="200" height="200">
+  <br>
+  <h3>ToDo Cat - 暹罗猫与起司猫的100个ToDo</h3>
+</div>
+
 一个功能完整的iOS待办事项应用，采用最新的SwiftUI和SwiftData技术。
 
 ## 功能特性
